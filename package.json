@@ -1,9 +1,10 @@
 {
   "name": "testglobals",
-  "version": "0.0.1-experimental1",
+  "version": "0.0.1-experimental2",
   "dependencies": {
     "astwalker": "*",
     "esprima": "~1.0.4",
     "escodegen": "~0.0.28"
-  }
+  },
+  "main": "./testglobals.js"
 }
