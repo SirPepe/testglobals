@@ -1,6 +1,6 @@
 {
   "name": "testglobals",
-  "version": "0.0.1-experimental2",
+  "version": "0.0.1-experimental3",
   "dependencies": {
     "esprima": "~1.0.4",
     "escodegen": "~0.0.28",
