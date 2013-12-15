@@ -1,7 +1,7 @@
 var fs = require('fs');
 var esprima = require('esprima');
 var escodegen = require('escodegen');
-var ASTWalker = require('astwalker');
+var estraverse = require('estraverse');
 
 function read(file){
   return fs.readFileSync(file, {
@@ -65,38 +65,44 @@ module.exports = function testglobals(fileIn, fileOut, options){
 
   var ast = parse(read(fileIn));
   addGlobalObject(ast, global);
-  var walker = new ASTWalker();
+
   var identifiers = getIdentifiers(ast);
 
-  walker.addHandler('FunctionDeclaration', function(node, nodeList){
-    if(node.id != null && typeof node.id.name !== 'undefined'){
-      if(identifiers.indexOf(node.id.name) !== -1){
-        expose(global, node.id.name, nodeList, node);
-      }
-    }
-  });
+  estraverse.traverse(ast, {
+    enter: function handle(node, parent){
+      switch(node.type){
 
-  walker.addHandler('VariableDeclaration', function(node, nodeList){
-    for(var i = 0; i < node.declarations.length; i++){
-      if(node.declarations[i].init){
-        if(typeof node.declarations[i].id.name !== 'undefined'){
-          if(identifiers.indexOf(node.declarations[i].id.name) !== -1){
-            expose(global, node.declarations[i].id.name, nodeList, node);
+        case 'FunctionDeclaration':
+          if(node.id != null && typeof node.id.name !== 'undefined'){
+            if(identifiers.indexOf(node.id.name) !== -1){
+              expose(global, node.id.name, parent.body, node);
+            }
           }
-        }
+          break;
+
+        case 'VariableDeclaration':
+          for(var i = 0; i < node.declarations.length; i++){
+            if(node.declarations[i].init){
+              if(typeof node.declarations[i].id.name !== 'undefined'){
+                if(identifiers.indexOf(node.declarations[i].id.name) !== -1){
+                  expose(global, node.declarations[i].id.name, parent.body, node);
+                }
+              }
+            }
+          }
+          break;
+
+        case 'ExpressionStatement':
+          if(node.expression.type === 'AssignmentExpression'){
+            if(identifiers.indexOf(node.expression.left.name) !== -1){
+              expose(global, node.expression.left.name, parent.body, node);
+            }
+          }
+        break;
+
       }
     }
   });
-
-  walker.addHandler('ExpressionStatement', function(node, nodeList){
-    if(node.expression.type === 'AssignmentExpression'){
-      if(identifiers.indexOf(node.expression.left.name) !== -1){
-        expose(global, node.expression.left.name, nodeList, node);
-      }
-    }
-  });
-
-  walker.walk(ast);
 
   var transformedCode = escodegen.generate(ast);
   write(transformedCode, fileOut);
